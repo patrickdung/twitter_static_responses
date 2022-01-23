@@ -14,9 +14,15 @@ Options
 - #TWITTER_STATS_OVERWRITE_INITIAL_CACHE = False
 - TWITTER_STATS_UPDATE_INITIAL_CACHE = True
 
+Initial setup
+-------------
+Create a file 'twitter_stats/cache.json' with content:
+{"data": []}
+
 Notes
 -----
 This plugin references these plugins:
 
 - `Pelican webmention <https://github.com/drivet/pelican-webmention>`__
+- `Webmention static by Kappa <https://github.com/kappa-wingman/webmention_static_kappa>`__
 - `Pelican plugins <https://github.com/getpelican/pelican-plugins>`__
