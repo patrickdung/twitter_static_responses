@@ -1,0 +1,19 @@
+.hg/
+.*swp
+.*.sw*
+*~
+.idea/
+.vscode/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# snyk
+.dccache
+
+# We don't want to ignore the following even if they are dot-files
+#
+!.gitattributes
+!.gitignore
