@@ -56,6 +56,7 @@ class Stats(object):
   def __init__(self):
     self.liked = []
     self.reposted = []
+    self.replied = []
 
 def setup_twitter_stats(generator, metadata):
   metadata['twitter_stats'] = Stats()
@@ -97,7 +98,7 @@ def fetch_twitter_stats(generator, content):
 
           api_result_reply_count=(fetch_tweet_reply_count (tweet_id))
           if api_result_reply_count:
-            incoming_json_reply_count = {"reply_count": api_result_reply_count}
+            incoming_json_reply_count = json.loads(api_result_reply_count)
 
           # merged_json={}
           #if (incoming_json_liking_users["data"] not in []) : 
@@ -114,20 +115,24 @@ def fetch_twitter_stats(generator, content):
           #  merged_json={'data': merged_json['data'] + incoming_json_retweeted_users['data']}
             #merged_json={'data': merged_json['data'].append(incoming_json_retweeted_users['data'])}
             #merged_json={'data': incoming_json_liking_users['data']+incoming_json_retweeted_users['data']}
-           resulting_list = list(merged_json['data'])
-           resulting_list.extend(x for x in incoming_json_retweeted_users['data'] if x not in resulting_list)
-           merged_json = {'data': resulting_list}
-          print ("M----")
+            if "data" in merged_json:
+              resulting_list = list(merged_json['data'])
+              resulting_list.extend(x for x in incoming_json_retweeted_users['data'] if x not in resulting_list)
+              merged_json = {'data': resulting_list}
+            else:
+              merged_json = incoming_json_retweeted_users
+          print ("M2----")
           print (merged_json)
 
-          '''
           if "data" in incoming_json_reply_count and incoming_json_reply_count["data"]:
-            resulting_list = list(merged_json['data'])
-            resulting_list.extend(x for x in incoming_json_reply_count['data'] if x not in resulting_list)
-            merged_json = {'data': resulting_list}
-          print ("M----")
+            if "data" in merged_json:
+              resulting_list = list(merged_json['data'])
+              resulting_list.extend(x for x in incoming_json_reply_count['data'] if x not in resulting_list)
+              merged_json = {'data': resulting_list}
+            else:
+              merged_json = incoming_json_reply_count
+          print ("M3----")
           print (merged_json)
-          '''
 
       if TWITTER_STATS_UPDATE_INITIAL_CACHE and "data" in merged_json:
           '''
@@ -163,7 +168,7 @@ def fetch_twitter_stats(generator, content):
         print ()
 
       '''
-      if TWITTER_STATS_UPDATE_INITIAL_CACHE and "reply_count" in incoming_json_reply_count:
+      if TWITTER_STATS_UPDATE_INITIAL_CACHE and "data" in incoming_json_reply_count:
           print ("pre-merge-----------")
           print (cached_json)
           ##cached_json.update(merged_json)
@@ -187,7 +192,6 @@ def fetch_twitter_stats(generator, content):
         ##cached_json=merged_json
         print ()        
       '''
-
       #current_Item_Count = 0
       #for x in api_result:
       #if "data" not in cached_json and "reply_count" not in cached_json:
@@ -276,7 +280,7 @@ def fetch_tweet_retweeted_users (tweet_id):
       req = urllib.request.Request(tweet_query_url, headers={'Authorization': 'Bearer ' + TWITTER_BEARER_TOKEN})
       response = urllib.request.urlopen(req)
       data = response.read().decode("utf-8")
-      # print (str(data))
+      print (str(data))
       j = json.loads(data)
     except:
       raise
@@ -320,36 +324,32 @@ def fetch_tweet_reply_count (tweet_id):
       raise
 
     tweets = []
+    reply_count = 0
 
     if ("data" in j):
-        print ("A")
+        print ("DEBUG: 4")
         if ("public_metrics" in j['data'][0]):
-          print ("B")
- 
-          '''
-          for x in j['data'][0]['public_metrics']:
-            #if ( x.get("tweet-id", "") == content.metadata.get('tweet_id') ):
-          
-            replied_tweet = {
-              "tweet_id": tweet_id,
-              "property": "replied",
-              "by-id": x.get("id", ""),
-              "by-name": x.get("name", ""),
-              "ref_url": "https://twitter.com/"+TWITTER_USERNAME+"/status/"+tweet_id,
-              #"reply_count": x.get("public_metrics", {"reply_count": ""}).get("reply_count": ""),
-            }
-          '''
+          print ("DEBUG: 5")
+
           if ('reply_count' in j['data'][0]['public_metrics']):
             reply_count = j['data'][0]['public_metrics']['reply_count']
             print ("REPLIED_COUNT", int(reply_count))
-            #tweets.append(replied_tweet)
+ 
+            if int(reply_count) > 0:
+              replied_tweet = {
+                "tweet_id": tweet_id,
+                "property": "replied",
+                "ref_url": "https://twitter.com/"+TWITTER_USERNAME+"/status/"+tweet_id,
+                "reply_count": reply_count,
+              }
+              tweets.append(replied_tweet)
 
-          ##return json.dumps(tweets)
-          #return json.dumps({'data': tweets})
-          return int(reply_count)
-        else:
-          #return json.dumps({'data': []})
-          return 0
+              ##return json.dumps(tweets)
+              return json.dumps({'data': tweets})
+              #return int(reply_count)
+          #else:
+          #  #return json.dumps({'data': []})
+          #  return
          
 def register():
     signals.initialized.connect(initialize_module)
