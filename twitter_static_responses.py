@@ -5,7 +5,7 @@
 # Copyright (c) 2022 Patrick Dung
 
 from __future__ import unicode_literals
-from pelican import signals, contents
+from pelican import signals, contents, readers
 import os, urllib.request
 
 import json
@@ -66,8 +66,10 @@ def fetch_twitter_stats(generator, content):
 
   if (content.metadata.get("tweet_id") not in {None, ""}):
       # metadata['tweet_id'] = self.process_metadata('tweet_id', tweet_id)
-      tweet_id = content.metadata.get('tweet_id')
-      # print (tweet_id)
+      #tweet_ids = content.metadata.get('tweet_id').split(",")
+      tweet_ids = [x.strip() for x in content.metadata.get('tweet_id').split(',')]
+      print (tweet_ids)
+      ## https://github.com/getpelican/pelican/issues/2496
 
       incoming_json_liking_users = {}
       incoming_json_retweeted_users = {} 
@@ -84,160 +86,165 @@ def fetch_twitter_stats(generator, content):
       except:
         raise
 
-      if TWITTER_STATS_UPDATE_INITIAL_CACHE:
 
-          api_result_liking_users=(fetch_tweet_liking_users (tweet_id))
-          # print (api_result_liking_users)
-          if api_result_liking_users:
-            incoming_json_liking_users = json.loads(api_result_liking_users)
+      for tweet_id in tweet_ids:
+          print (tweet_id)
 
-          api_result_retweeted_users=(fetch_tweet_retweeted_users (tweet_id))
-          # print (api_result_retweeted_users)
-          if api_result_retweeted_users:
-            incoming_json_retweeted_users = json.loads(api_result_retweeted_users)
+          if TWITTER_STATS_UPDATE_INITIAL_CACHE:
 
-          api_result_reply_count=(fetch_tweet_reply_count (tweet_id))
-          if api_result_reply_count:
-            incoming_json_reply_count = json.loads(api_result_reply_count)
+              api_result_liking_users=(fetch_tweet_liking_users (tweet_id))
+              # print (api_result_liking_users)
+              if api_result_liking_users:
+                incoming_json_liking_users = json.loads(api_result_liking_users)
 
-          # merged_json={}
-          #if (incoming_json_liking_users["data"] not in []) : 
-          if "data" in incoming_json_liking_users and incoming_json_liking_users["data"]:
-          ##if "data" in incoming_json_liking_users and incoming_json_liking_users['data'] not in {None, ""}:
-            print ("DEBUG0")
-            #merged_json={'data': incoming_json_liking_users['data']}
-            merged_json = incoming_json_liking_users
-            print ("DEBUG1", merged_json)
+              api_result_retweeted_users=(fetch_tweet_retweeted_users (tweet_id))
+              # print (api_result_retweeted_users)
+              if api_result_retweeted_users:
+                incoming_json_retweeted_users = json.loads(api_result_retweeted_users)
 
-          if "data" in incoming_json_retweeted_users and incoming_json_retweeted_users["data"]:
-          #if (incoming_json_retweeted_users["data"] not in []) :
-          #if incoming_json_retweeted_users['data'] not in {None, ""}:
-          #  merged_json={'data': merged_json['data'] + incoming_json_retweeted_users['data']}
-            #merged_json={'data': merged_json['data'].append(incoming_json_retweeted_users['data'])}
-            #merged_json={'data': incoming_json_liking_users['data']+incoming_json_retweeted_users['data']}
-            if "data" in merged_json:
-              resulting_list = list(merged_json['data'])
-              resulting_list.extend(x for x in incoming_json_retweeted_users['data'] if x not in resulting_list)
-              merged_json = {'data': resulting_list}
-            else:
-              merged_json = incoming_json_retweeted_users
-          print ("M2----")
-          print (merged_json)
+              api_result_reply_count=(fetch_tweet_reply_count (tweet_id))
+              if api_result_reply_count:
+                incoming_json_reply_count = json.loads(api_result_reply_count)
 
-          if "data" in incoming_json_reply_count and incoming_json_reply_count["data"]:
-            if "data" in merged_json:
-              resulting_list = list(merged_json['data'])
-              resulting_list.extend(x for x in incoming_json_reply_count['data'] if x not in resulting_list)
-              merged_json = {'data': resulting_list}
-            else:
-              merged_json = incoming_json_reply_count
-          print ("M3----")
-          print (merged_json)
+              # merged_json={}
+              #if (incoming_json_liking_users["data"] not in []) : 
+              if "data" in incoming_json_liking_users and incoming_json_liking_users["data"]:
+              ##if "data" in incoming_json_liking_users and incoming_json_liking_users['data'] not in {None, ""}:
+                print ("DEBUG0")
+                #merged_json={'data': incoming_json_liking_users['data']}
+                merged_json = incoming_json_liking_users
+                print ("DEBUG1", merged_json)
 
-      if TWITTER_STATS_UPDATE_INITIAL_CACHE and "data" in merged_json:
-          '''
-          try:
-            file = open(TWITTER_STATS_CACHE_FILENAME, "r")
-            cached_json = json.load(file)
-            file.close()
+              if "data" in incoming_json_retweeted_users and incoming_json_retweeted_users["data"]:
+              #if (incoming_json_retweeted_users["data"] not in []) :
+              #if incoming_json_retweeted_users['data'] not in {None, ""}:
+              #  merged_json={'data': merged_json['data'] + incoming_json_retweeted_users['data']}
+                #merged_json={'data': merged_json['data'].append(incoming_json_retweeted_users['data'])}
+                #merged_json={'data': incoming_json_liking_users['data']+incoming_json_retweeted_users['data']}
+                if "data" in merged_json:
+                  resulting_list = list(merged_json['data'])
+                  resulting_list.extend(x for x in incoming_json_retweeted_users['data'] if x not in resulting_list)
+                  merged_json = {'data': resulting_list}
+                else:
+                  merged_json = incoming_json_retweeted_users
+              print ("M2----")
+              print (merged_json)
 
-            if cached_json is None:
-              cached_json = {}
-          '''
-          print ("pre-merge-----------")
-          print (cached_json)
-          ##cached_json.update(merged_json)
-          # for list, py 3.9+
-          #cached_json = {'data': cached_json['data'] | merged_json['data']}
-          resulting_list = list(cached_json['data'])
-          resulting_list.extend(x for x in merged_json['data'] if x not in resulting_list)
-          cached_json = {'data': resulting_list}
+              if "data" in incoming_json_reply_count and incoming_json_reply_count["data"]:
+                if "data" in merged_json:
+                  resulting_list = list(merged_json['data'])
+                  resulting_list.extend(x for x in incoming_json_reply_count['data'] if x not in resulting_list)
+                  merged_json = {'data': resulting_list}
+                else:
+                  merged_json = incoming_json_reply_count
+              print ("M3----")
+              print (merged_json)
 
-          print ("post-merge----------------")
-          print (cached_json)
-          try:
-            file = open(TWITTER_STATS_CACHE_FILENAME, "w+")
-            json.dump(cached_json, file)
-            file.close()
-          except:
-            raise
-      else:
-        ## original version
-        ##cached_json=merged_json
-        #print ("check json from cache:", cached_json)
-        print ()
+          if TWITTER_STATS_UPDATE_INITIAL_CACHE and "data" in merged_json:
+              '''
+              try:
+                file = open(TWITTER_STATS_CACHE_FILENAME, "r")
+                cached_json = json.load(file)
+                file.close()
 
-      '''
-      if TWITTER_STATS_UPDATE_INITIAL_CACHE and "data" in incoming_json_reply_count:
-          print ("pre-merge-----------")
-          print (cached_json)
-          ##cached_json.update(merged_json)
-          ##cached_json['reply_count'].update(incoming_json_reply_count)
-          # for list, py 3.9+
-          #cached_json['reply_count'] = cached_json['reply_count'] | incoming_json_reply_count['reply_count']
-          resulting_list = list(cached_json['reply_count'])
-          resulting_list.extend(x for x in incoming_json_reply_count['reply_count'] if x not in resulting_list)
-          cached_json = {'reply_count': resulting_list}
+                if cached_json is None:
+                  cached_json = {}
+              '''
+              print ("pre-merge-----------")
+              print (cached_json)
+              ##cached_json.update(merged_json)
+              # for list, py 3.9+
+              #cached_json = {'data': cached_json['data'] | merged_json['data']}
+              resulting_list = list(cached_json['data'])
+              resulting_list.extend(x for x in merged_json['data'] if x not in resulting_list)
+              cached_json = {'data': resulting_list}
 
-          print ("post-merge----------------")
-          print (cached_json)
-          try:
-            file = open(TWITTER_STATS_CACHE_FILENAME, "w+")
-            json.dump(cached_json, file)
-            file.close()
-          except:
-            raise
-      else:
-        ## original version
-        ##cached_json=merged_json
-        print ()        
-      '''
-      #current_Item_Count = 0
-      #for x in api_result:
-      #if "data" not in cached_json and "reply_count" not in cached_json:
-      if "data" not in cached_json:
-        return
-      print ("DEBUG2", cached_json['data'])
-      for item in cached_json['data']:
-      ##print (j['children'])
-        #print (item.get('tweet_id'))
-        if ( item.get("tweet_id", "") == content.metadata.get('tweet_id') ):
-        #if (current_Item_Count >= TWITTER_STATS_MAX_ITEMS) : break
-        #if (current_Item_Count >= 100) : break
-          tweet = {
-            "tweet_id": tweet_id,
-            "by-id": item.get("by-id", ""),
-            "property": item.get("property", ""),
-            "by-name": item.get("by-name", ""),
-            "ref_url": item.get("ref_url", ""),
-          }
-
-          # print (tweet["tweet_id"], tweet["property"], tweet["by-id"], tweet["by-name"])
-          if tweet["property"] == 'like-of':
-            tweet["reaction"] = 'liked'
-            tweet["icon"] = '❤️'
-            content.twitter_stats.liked.append(tweet)
-          elif tweet["property"] == 'repost-of':
-            tweet["reaction"] = 'reposted'
-            tweet["icon"] = '🔄'
-            content.twitter_stats.reposted.append(tweet)
-          elif tweet["property"] == 'replied':
-            tweet["reaction"] = 'replied'
-            tweet["icon"] = '💬'
-            content.twitter_stats.replied.append(tweet)
+              print ("post-merge----------------")
+              print (cached_json)
+              try:
+                file = open(TWITTER_STATS_CACHE_FILENAME, "w+")
+                json.dump(cached_json, file)
+                file.close()
+              except:
+                raise
           else:
-            print(f'Unrecognized reaction type: {tweet["property"]}')
-            tweet["reaction"] = 'unclassified'
-            tweet["icon"] = '❔'
-            content.twitter_stats.unclassified.append(tweet)
-      if 'reply_count' in cached_json:
-        metadata['reply_count'] = int(cached_json['reply_count'])
+            ## original version
+            ##cached_json=merged_json
+            #print ("check json from cache:", cached_json)
+            print ()
+
+          '''
+          if TWITTER_STATS_UPDATE_INITIAL_CACHE and "data" in incoming_json_reply_count:
+              print ("pre-merge-----------")
+              print (cached_json)
+              ##cached_json.update(merged_json)
+              ##cached_json['reply_count'].update(incoming_json_reply_count)
+              # for list, py 3.9+
+              #cached_json['reply_count'] = cached_json['reply_count'] | incoming_json_reply_count['reply_count']
+              resulting_list = list(cached_json['reply_count'])
+              resulting_list.extend(x for x in incoming_json_reply_count['reply_count'] if x not in resulting_list)
+              cached_json = {'reply_count': resulting_list}
+
+              print ("post-merge----------------")
+              print (cached_json)
+              try:
+                file = open(TWITTER_STATS_CACHE_FILENAME, "w+")
+                json.dump(cached_json, file)
+                file.close()
+              except:
+                raise
+          else:
+            ## original version
+            ##cached_json=merged_json
+            print ()        
+          '''
+          #current_Item_Count = 0
+          #for x in api_result:
+          #if "data" not in cached_json and "reply_count" not in cached_json:
+          if "data" not in cached_json:
+            return
+          print ("DEBUG2", cached_json['data'])
+          for item in cached_json['data']:
+          ##print (j['children'])
+            #print (item.get('tweet_id'))
+            #if ( item.get("tweet_id", "") == content.metadata.get('tweet_id') ):
+            if ( str(item.get("tweet_id", "")) == str(tweet_id) ) :
+            #if (current_Item_Count >= TWITTER_STATS_MAX_ITEMS) : break
+            #if (current_Item_Count >= 100) : break
+              tweet = {
+                "tweet_id": tweet_id,
+                "by-id": item.get("by-id", ""),
+                "property": item.get("property", ""),
+                "by-name": item.get("by-name", ""),
+                "ref_url": item.get("ref_url", ""),
+              }
+
+              # print (tweet["tweet_id"], tweet["property"], tweet["by-id"], tweet["by-name"])
+              if tweet["property"] == 'like-of':
+                tweet["reaction"] = 'liked'
+                tweet["icon"] = '❤️'
+                content.twitter_stats.liked.append(tweet)
+              elif tweet["property"] == 'repost-of':
+                tweet["reaction"] = 'reposted'
+                tweet["icon"] = '🔄'
+                content.twitter_stats.reposted.append(tweet)
+              elif tweet["property"] == 'replied':
+                tweet["reaction"] = 'replied'
+                tweet["icon"] = '💬'
+                content.twitter_stats.replied.append(tweet)
+              else:
+                print(f'Unrecognized reaction type: {tweet["property"]}')
+                tweet["reaction"] = 'unclassified'
+                tweet["icon"] = '❔'
+                content.twitter_stats.unclassified.append(tweet)
+          if 'reply_count' in cached_json:
+            metadata['reply_count'] = int(cached_json['reply_count'])
 
 def fetch_tweet_liking_users (tweet_id):
     ''' https://api.twitter.com/2/tweets/<tweet_id>/liking_users '''
 
     tweet_query_url = 'https://api.twitter.com/2/tweets/' + tweet_id + '/liking_users'
-    # print (tweet_query_url)
+    print (tweet_query_url)
     try:
       req = urllib.request.Request(tweet_query_url, headers={'Authorization': 'Bearer ' + TWITTER_BEARER_TOKEN})
       response = urllib.request.urlopen(req)
